@@ -1,6 +1,6 @@
 local strngVal = 'stringValue'
 local serverScriptService = game:GetService('ServerScriptService')
-local webHookHandler = require(serverScriptService.poop.webHookHandler)
+local webHookHandler = require(serverScriptService.OtherFolder.webHookHandler)
 local banHandler = {}
 
 function banHandler:isPlayerBanned(player, DB)

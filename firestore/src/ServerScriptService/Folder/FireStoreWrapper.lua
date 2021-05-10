@@ -1,60 +1,23 @@
-local HTTPS = game:GetService('HttpService')
-local promiseService = require(script.Parent.Parent.poop.Promise)
-
+local serverScriptService = game:GetService('ServerScriptService')
+local Promise = require(serverScriptService.OtherFolder.Promise)
+local https = require(serverScriptService.http)
 local fireStore = {}
 
 fireStore.dataBaseLink = ''
-fireStore.dataBaseAuthorizationToken = ''
+fireStore.dataBaseIdToken = ''
 fireStore.webApiKey = ''
 fireStore.refreshToken = ''
-fireStore.refreshTokenLink = 'https://securetoken.googleapis.com/v1/token?key='
-fireStore.anonymousSignInLink = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='
+fireStore.refreshTokenLink = 'https://securetoken.googleapis.com/v1/token'
+fireStore.anonymousSignInLink = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp'
 
--- grab the whole collection from DB
-function fireStore:getFireStore(docPath:string)
-
-local request = self:createRequest(self.dataBaseLink..docPath, 'GET')
-
-return promiseService.new(function(resolve, reject)
-		local response = HTTPS:RequestAsync(request)
-		if response.Success then
-			local snap = HTTPS:JSONDecode(response.Body)
-			local doc = snap['documents']
-			resolve(doc)
-		else
-			reject(response)
-		end
-	end)
-end
-
--- Init the FB by grabbing the whole collection
-function fireStore:init()
-
-	local request = self:createRequest(self.dataBaseLink, 'GET')
-
-	self.getFireStore(request)
-		:andThen(function(doc)
-			print('Succesfully retrive DB from FB')
-			return(doc)
-		end)
-		:catch(function(err)
-			return warn('Failed to retrive DB from FB', err)
-	end)
-end
-
--- Update the old DB retrieved from FB to the new one
-function fireStore:updateDB()
-
-	local request = self:createRequest(self.dataBaseLink, 'GET')
-
-	self.getFireStore(request)
-		:andThen(function(doc)
-			print('Succesfully updated the DB')
-			return(doc)
-		end)
-		:catch(function(err)
-			return warn('Failed to update DB '..err)
-	end)
+-- setting necessary things up
+function fireStore:setDataBaseSecrets(
+	dataBaseLink:string, dataBaseIdToken:string , fireBaseWebApiKey:string, refreshToken:string
+	)
+	self.dataBaseLink = dataBaseLink
+	self.dataBaseIdToken = dataBaseIdToken
+	self.webApiKey = fireBaseWebApiKey
+	self.refreshToken = refreshToken
 end
 
 -- Create a request object
@@ -65,38 +28,118 @@ function fireStore:createRequest(endPoint:string, method:string)
 		Method = method,
 		Headers = {
 			['Content-Type'] = 'application/json',
-			['Authorization'] = 'Bearer '..self.dataBaseAuthorizationToken
+			['Authorization'] = 'Bearer '..self.dataBaseIdToken
 		},
 	}
 	return request
 end
 
+-- grab the whole collection from DB
+function fireStore:getFireStore(collectionPath:string)
+
+local request = self:createRequest(self.dataBaseLink..collectionPath, 'GET')
+
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			headers=request.Headers
+		})
+
+		if response.ok then
+			local collection = response:json()
+			resolve(collection)
+		else
+			reject(response.status_code, response.message)
+		end
+	end)
+end
+
+-- Get document
+
+function fireStore:getDocument(documentPath:string)
+	local request = self:createRequest(self.dataBaseLink..documentPath, 'GET')
+
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			headers=request.Headers
+		})
+
+		if response.ok then
+			resolve(response:json(response['Body']))
+		else
+			reject(response.status_code, response)
+		end
+	end)
+end
+
+-- create document. docname is optional and if left out firestore will create generate random id for the doc name
+function fireStore:createDocument(documentCollectionId:string, updatedDocument, documentName:string)
+	local request = self:createRequest(self.dataBaseLink..documentCollectionId, 'POST')
+
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			headers=request.Headers, data=updatedDocument, query = documentName or nil
+		})
+
+		if response.ok then
+			resolve(response.status_code)
+		else
+			reject(response.status_code, response.messsage)
+		end
+	end)
+end
+
 -- Delete document
 function fireStore:deleteDocument(documentPath:string)
 
-	local request = self:createRequest(documentPath, 'DELETE')
+	local request = self:createRequest(self.dataBaseLink..documentPath, 'DELETE')
 
-	return promiseService.new(function(resolve, reject)
-		local response = HTTPS:RequestAsync(request)
-		if response.Success then
-			resolve('Doc deleted')
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			headers = request.Headers
+		})
+
+		if response.ok then
+			resolve(response.status_code)
 		else
-			reject(response)
+			reject(response.status_code, response)
 		end
 	end)
+end
+
+function fireStore:updateDocument(documentPath:string, query)
+	local request = self:createRequest(self.dataBaseLink..documentPath, 'PATCH')
+
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			headers=request.Headers, query = query or {}
+		})
+		if response.ok then
+			resolve(response)
+		else
+			reject(response.status_code, response)
+		end
+	end)
+end
+
+function fireStore:updatedataBaseIdToken(updatedToken:string)
+	self.dataBaseIdToken = updatedToken
+	print('dataBaseAuthToken has been updated')
 end
 
 -- Sign in to FB Auth anonymously. result from request is idToken, refreshToken, token expiresIn
 function fireStore:anonymousSignIn()
 
-	local request = self:createRequest(self.anonymousSignInLink..self.webApiKey, 'POST')
+	local request = self:createRequest(self.anonymousSignInLink, 'POST')
 
-	return promiseService.new(function(resolve, reject)
-		local response = HTTPS:RequestAsync(request)
-		if response.Success then
-			resolve(HTTPS:JSONDecode(response['Body']))
+	return Promise.new(function(resolve, reject)
+		local response = https.request(request.Method, request.Url, {
+			query={ key = self.webApiKey}
+		})
+
+		if response.ok then
+			resolve(response:json(response['Body']))
 		else
-			reject(response.error)
+			reject(response.status_code, response.message)
 		end
 	end)
 end
@@ -104,35 +147,27 @@ end
 -- exchange refresh token to refresh id token when it expires
 function fireStore:exchangeRefreshTokenForAnIdToken(refreshToken:string)
 
-	local request = self:createRequest(self.refreshTokenLink..self.webApiKey, 'POST')
-
-	local requestHeader = request['Headers']
-	requestHeader['Content-Type'] = 'application/x-www-form-urlencoded'
-	request['Body'] = {
-		['grant_type'] = 'refresh_token',
-		['refresh_token'] = refreshToken,
+	local payload = {
+		grant_type = "refresh_token",
+		refresh_token = refreshToken
 	}
+	local requestHeader = { ['Content-Type'] = 'application/x-www-form-urlencoded' }
+	local requestQuery = { key = self.webApiKey}
 
-	return promiseService.new(function(resolve, reject)
-		local response = HTTPS:RequestAsync(request)
-		if response.Success then
-			local encodedResponse = HTTPS:JSONDecode(response['Body'])
-			local refreshedIdToken = encodedResponse['id_token']
-			resolve(refreshedIdToken)
+	return Promise.new(function(resolve, reject)
+		local response = https.request('POST', self.refreshTokenLink, {
+			data=payload, headers=requestHeader, query=requestQuery
+		})
+
+		if response.ok then
+			local decodedResponse = response:json()
+			local idToken = decodedResponse['id_token']
+			self:updatedataBaseIdToken(idToken)
+			resolve()
 		else
-			reject(response)
+			reject(response.status_code, response.message)
 		end
 	end)
-end
-
--- setting necessary things up
-function fireStore:setDataBaseSecrets(
-	dataBaseLink:string, dataBaseAuthorizationToken:string , fireStoreWebApiKey:string, refreshToken:string
-	)
-	self.dataBaseLink = dataBaseLink
-	self.dataBaseAuthorizationToken = dataBaseAuthorizationToken
-	self.webApiKey = fireStoreWebApiKey
-	self.refreshToken = refreshToken
 end
 
 return fireStore

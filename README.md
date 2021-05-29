@@ -1,2 +1,2 @@
 # roblox-firestore-wrapper
-an attempt to create roblox to firestore api wrapper
+Roblox to firestore api wrapper

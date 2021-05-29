@@ -95,7 +95,7 @@ function fireStore:exchangeRefreshTokenForAnIdToken(refreshToken:string)
 	end)
 end
 
--- grab the whole collection from DB
+-- return a collection object from DB
 function fireStore:getColletion(collectionPath:string)
 
 	local url = self.dataBaseLink..collectionPath
@@ -150,7 +150,7 @@ function fireStore:getColletion(collectionPath:string)
 				})
 
 				if response.ok then
-					resolve(response)
+					resolve(response:json())
 				else
 					reject(response)
 				end

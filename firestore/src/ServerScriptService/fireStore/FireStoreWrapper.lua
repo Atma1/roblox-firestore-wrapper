@@ -1,6 +1,7 @@
 local serverScriptService = game:GetService('ServerScriptService')
-local Promise = require(serverScriptService.OtherFolder.Promise)
-local https = require(serverScriptService.http)
+local dataStoreService = game:GetService('DataStoreService')
+local Promise = require(serverScriptService.fireStore.lib.Promise)
+local https = require(serverScriptService.fireStore.lib.http)
 local fireStore = {}
 
 fireStore.dataBaseLink = ''
@@ -34,9 +35,22 @@ function fireStore:createRequestObject(endPoint:string, method:string)
 	return request
 end
 
-function fireStore:updatedataBaseIdToken(updatedToken:string)
-	self.dataBaseIdToken = updatedToken
-	print('dataBaseAuthToken has been updated')
+function fireStore:updatedataBaseIdToken(updatedToken:string, dataStoreName:string, dataStoreKey:string)
+
+	local setDataStore = Promise.promisify(function(token, dsname, dskey)
+		local ds = dataStoreService:GetDataStore(dsname)
+		ds:setAsync(dskey, token)
+		return token
+	end)
+
+	setDataStore(updatedToken, dataStoreName, dataStoreKey)
+	:andThen(function(token)
+		self.dataBaseIdToken = token
+		print('dataBaseAuthToken has been updated')
+	end)
+	:catch(function(err)
+		warn(err)
+	end)
 end
 
 -- Sign in to FB Auth anonymously. result from request is idToken, refreshToken, token expiresIn
@@ -46,7 +60,7 @@ function fireStore:anonymousSignIn()
 
 	return Promise.new(function(resolve, reject)
 		local response = https.request(request.Method, request.Url, {
-			query={ key=self.webApiKey}
+			query={ key=self.webApiKey }
 		})
 
 		if response.ok then
@@ -69,16 +83,14 @@ function fireStore:exchangeRefreshTokenForAnIdToken(refreshToken:string)
 
 	return Promise.new(function(resolve, reject)
 		local response = https.request('POST', self.refreshTokenLink, {
-			data=payload, headers=requestHeader, query=requestQuery
+			data=payload, headers=requestHeader, query=requestQuery,
 		})
 
 		if response.ok then
 			local decodedResponse = response:json()
-			local idToken = decodedResponse['id_token']
-			self:updatedataBaseIdToken(idToken)
-			resolve(response)
+			resolve(decodedResponse)
 		else
-			reject(response.status_code, response.message)
+			reject(response)
 		end
 	end)
 end
@@ -89,17 +101,17 @@ function fireStore:getColletion(collectionPath:string)
 	local url = self.dataBaseLink..collectionPath
 	local collection = {}
 
-		function collection:Request(method:string, docPath:string, requestBody)
+		function collection:Request(method:string, docPath:string, requestBody, searchQuery:string)
 			local request = fireStore:createRequestObject(url..docPath, method)
-
+			
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
-						headers=request.Headers, data=requestBody or {}
+						headers=request.Headers, data=requestBody or {}, query=searchQuery or {}
 				})
 				if response.ok then
-						resolve(response:json(response['Body']))
+					resolve(response:json())
 				else
-					reject(response.statu_code, response)
+					reject(response)
 				end
 			end)
 		end
@@ -125,7 +137,7 @@ function fireStore:getColletion(collectionPath:string)
 
 		-- create document. docname is optional and if left out fireStore will create generate random id for the doc name
 		-- mask is the field of the doc to return. if not specified fireStore will return all doc's fields
-		function collection:createDocument(documentInstance, documentName:string, mask:string)
+		function collection:createDocument(documentInstance:Instance, documentName:string, mask:string)
 			assert(documentInstance ~=nil, 'The document must not be empty.')
 
 			local request = fireStore:createRequestObject(url, 'POST')
@@ -164,7 +176,7 @@ function fireStore:getColletion(collectionPath:string)
 		end
 
 		--updatemask is location of the field to be updated.
-		function collection:patchDocument(documentPath:string, updatedDoc, updateMask:string, currentDocexists:boolean, mask:string)
+		function collection:patchDocument(documentPath:string, updatedDoc, updateMask:string, docExist:boolean, mask:string)
 			assert(updateMask ~= nil, 'The update mask must not be empty.')
 			assert(updatedDoc ~= nil, 'Updated doc must not be empty')
 
@@ -173,7 +185,7 @@ function fireStore:getColletion(collectionPath:string)
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
 					headers=request.Headers, data=updatedDoc, query ={
-						['updateMask.fieldPaths']=updateMask, ['currentDocument.exists']=currentDocexists or {},
+						['updateMask.fieldPaths']=updateMask, ['currentDocument.exists']=docExist or {},
 						mask=mask or {}
 					}
 				})

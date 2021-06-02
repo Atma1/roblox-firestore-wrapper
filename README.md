@@ -1,6 +1,12 @@
-# roblox-firestore-wrapper
+# A Roblox to Firestore API Wrapper
 Roblox to firestore api wrapper
 
+## Additional Documentation
+
+* Firebase Firestore documentation: https://firebase.google.com/docs/firestore
+* Firebase Firestore REST API documentation: https://firebase.google.com/docs/firestore/use-rest-api
+
+## Credits
 Many thanks to:
 
 jpatrickdill for his simple and elegant https module

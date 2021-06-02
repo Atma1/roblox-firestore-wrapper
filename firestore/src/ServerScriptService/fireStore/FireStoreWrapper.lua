@@ -137,14 +137,14 @@ function fireStore:getColletion(collectionPath:string)
 
 		-- create document. docname is optional and if left out fireStore will create generate random id for the doc name
 		-- mask is the field of the doc to return. if not specified fireStore will return all doc's fields
-		function collection:createDocument(documentInstance, documentName:string, mask:string)
-			assert(documentInstance ~=nil, 'The document must not be empty.')
+		function collection:createDocument(document, documentName:string, mask:string)
+			assert(document ~=nil, 'The document must not be empty.')
 
 			local request = fireStore:createRequestObject(url, 'POST')
 
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
-					headers=request.Headers, data=documentInstance, query = {
+					headers=request.Headers, data=document, query = {
 						documentId = documentName or {}, mask = mask or {}
 					}
 				})

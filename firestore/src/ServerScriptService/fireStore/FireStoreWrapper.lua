@@ -37,13 +37,13 @@ end
 
 function fireStore:updatedataBaseIdToken(updatedToken:string, dataStoreName:string, dataStoreKey:string)
 
-	local setDataStore = Promise.promisify(function(token, dsname, dskey)
+	local setToDataStore = Promise.promisify(function(token, dsname, dskey)
 		local ds = dataStoreService:GetDataStore(dsname)
 		ds:setAsync(dskey, token)
 		return token
 	end)
 
-	setDataStore(updatedToken, dataStoreName, dataStoreKey)
+	setToDataStore(updatedToken, dataStoreName, dataStoreKey)
 	:andThen(function(token)
 		self.dataBaseIdToken = token
 		print('dataBaseAuthToken has been updated')
@@ -66,7 +66,7 @@ function fireStore:anonymousSignIn()
 		if response.ok then
 			resolve(response:json(response['Body']))
 		else
-			reject(response.status_code, response.message)
+			reject(response)
 		end
 	end)
 end
@@ -95,32 +95,47 @@ function fireStore:exchangeRefreshTokenForAnIdToken(refreshToken:string)
 	end)
 end
 
--- return a collection object from DB
+-- returns a collection object from DB
 function fireStore:getColletion(collectionPath:string)
 
-	local url = self.dataBaseLink..collectionPath
+	local collectionPathUrl = self.dataBaseLink..collectionPath
 	local collection = {}
 
 		function collection:Request(method:string, docPath:string, requestBody, searchQuery:string)
-			local request = fireStore:createRequestObject(url..docPath, method)
-			
+			local request = fireStore:createRequestObject(collectionPathUrl..docPath, method)
+
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
 						headers=request.Headers, data=requestBody or {}, query=searchQuery or {}
 				})
 				if response.ok then
-					resolve(response:json())
+					resolve(response:json(response['Body']))
 				else
 					reject(response)
 				end
 			end)
 		end
 
+		function collection:getAllDocuments()
+			local request = fireStore:createRequestObject(collectionPathUrl, 'GET')
+
+			return Promise.new(function(resolve, reject)
+				local response = https.request(request.Method, request.Url, {
+					headers=request.Headers
+				})
+
+				if response.ok then
+					resolve(response:json(response['Body']))
+				else
+					reject(response)
+				end
+			end)
+		end
 
 		-- Get document
 		-- mask is the field of the doc to return. if not specified fireStore will return all doc's fields
 		function collection:getDocument(documentPath:string, mask:string)
-			local request = fireStore:createRequestObject(url..documentPath, 'GET')
+			local request = fireStore:createRequestObject(collectionPathUrl..documentPath, 'GET')
 
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
@@ -140,7 +155,7 @@ function fireStore:getColletion(collectionPath:string)
 		function collection:createDocument(document, documentName:string, mask:string)
 			assert(document ~=nil, 'The document must not be empty.')
 
-			local request = fireStore:createRequestObject(url, 'POST')
+			local request = fireStore:createRequestObject(collectionPathUrl, 'POST')
 
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
@@ -160,7 +175,7 @@ function fireStore:getColletion(collectionPath:string)
 		-- Delete document
 		function collection:deleteDocument(documentPath:string)
 
-			local request = fireStore:createRequestObject(url..documentPath, 'DELETE')
+			local request = fireStore:createRequestObject(collectionPathUrl..documentPath, 'DELETE')
 
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {
@@ -178,9 +193,9 @@ function fireStore:getColletion(collectionPath:string)
 		--updatemask is location of the field to be updated.
 		function collection:patchDocument(documentPath:string, updatedDoc, updateMask:string, docExist:boolean, mask:string)
 			assert(updateMask ~= nil, 'The update mask must not be empty.')
-			assert(updatedDoc ~= nil, 'Updated doc must not be empty')
+			assert(updatedDoc ~= nil, 'Updated document must not be empty.')
 
-			local request = fireStore:createRequestObject(url..documentPath, 'PATCH')
+			local request = fireStore:createRequestObject(collectionPathUrl..documentPath, 'PATCH')
 
 			return Promise.new(function(resolve, reject)
 				local response = https.request(request.Method, request.Url, {

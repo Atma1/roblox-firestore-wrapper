@@ -40,8 +40,8 @@ fireStore:setDataBaseSecrets(DB_Link, DB_Auth, DB_WebApiKey, DB_RefreshToken)
 ]]
 
 fireStore:exchangeRefreshTokenForAnIdToken(DB_RefreshToken)
-	:andThen(function(response)
-		local newIdToken = response['id_token']
+	:andThen(function(responseBody)
+		local newIdToken = responseBody['id_token']
 		fireStore:updatedataBaseIdToken(newIdToken, 'apiKeysAndLinks', 'dataBaseAuthorizationToken')
 	end)
 	:catch(function(err)
@@ -61,8 +61,8 @@ local peterChildColletion = fireStore:getColletion('peter/family/child/')
 
 ]]--
 peterChildColletion:getDocument('Meg'):await()
-	:andThen(function(response)
-		print(response)
+	:andThen(function(document)
+		print(document)
 	end)
 	:catch(function(err)
 		warn(err)
@@ -84,18 +84,18 @@ local stewieDocument = {
 
 --[[
 	POST Operation.
-	@params {Table} document. the document to be created
+	@params {Dictionary} document. the document to be created
 	@params {String} mask. OPTIONAL and if not included all the doc's field will be returned
-	@returns {Dictionary} the created document with all of its fields
+	@returns {Dictionary} the created document with all of its specified fields
 
 ]]-- the first param is the document the second is the document name and is optional
-peterChildColletion:createDocument(stewieDocument, 'Stewie')
-	:andThen(function(response)
-		print(response)
-	end)
-	:catch(function(err)
-		warn(err)
-	end)
+local success, response = peterChildColletion:createDocument(stewieDocument, 'Stewie'):await()
+
+if success then
+	print(response)
+else
+	warn(response)
+end
 
 --[[
 	DELETE operation
@@ -126,8 +126,8 @@ local updatedChrisDocument = {
 
 ]]--
 peterChildColletion:patchDocument('chris', updatedChrisDocument, 'age', true)
-	:andThen(function(response)
-		print(response)
+	:andThen(function(updatedDocument)
+		print(updatedDocument)
 	end)
 	:catch(function(err)
 		warn(err)

@@ -1,0 +1,9 @@
+{
+    "Lua.diagnostics.ignore": [
+        "setAsync",
+        "getAsync"
+    ],
+    "Lua.diagnostics.disable": [
+        "missing-module-return"
+    ]
+}

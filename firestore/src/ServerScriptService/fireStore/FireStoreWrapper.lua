@@ -87,8 +87,7 @@ function fireStore:exchangeRefreshTokenForAnIdToken(refreshToken:string)
 		})
 
 		if response.ok then
-			local decodedResponse = response:json()
-			resolve(decodedResponse)
+			resolve(response:json())
 		else
 			reject(response)
 		end

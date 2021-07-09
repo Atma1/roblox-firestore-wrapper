@@ -1,7 +1,7 @@
 local serverScriptService = game:GetService('ServerScriptService')
 local dataStoreService = game:GetService('DataStoreService')
-local Promise = require(serverScriptService.fireStore.lib.Promise)
-local https = require(serverScriptService.fireStore.lib.http)
+local Promise = require(serverScriptService.Server.firestore.lib.Promise)
+local https = require(serverScriptService.Server.firestore.lib.http)
 local fireStore = {}
 
 fireStore.dataBaseLink = ''

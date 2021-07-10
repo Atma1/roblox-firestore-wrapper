@@ -5,7 +5,7 @@ function Request.new(url:string, method:string, bearerToken:string)
     local self = {}
     self.Url = url
     self.Method = method
-    self.Header = {
+    self.Headers = {
         ['Content-Type'] = 'application/json',
         ['Authorization'] = 'Bearer '..bearerToken
     }
@@ -18,6 +18,10 @@ end
 
 function Request:setBody(body)
     self.Body = body
+end
+
+function Request:setQuery(query)
+    self.Query = query
 end
 
 return Request

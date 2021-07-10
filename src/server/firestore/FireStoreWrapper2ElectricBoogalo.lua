@@ -39,17 +39,17 @@ function Firestore:anonymousSignIn()
 end
 
 function Firestore:refreshIdToken(refreshToken:string)
-
-	local data = {
+	local Request = requestObject.new(self.refreshTokenLink, 'POST')
+	Request:setBody({
 		grant_type = "refresh_token",
 		refresh_token = refreshToken
-	}
-	local requestHeader = { ['Content-Type'] = 'application/x-www-form-urlencoded' }
-	local requestQuery = { key = self.webApiKey }
+	})
+	Request:setHeaders({['Content-Type'] = 'application/x-www-form-urlencoded'})
+	Request:setQuery({ key = self.firebaseWebApiKey })
 
 	return Promise.new(function(resolve, reject)
 		local response = https.request('POST', self.refreshTokenLink, {
-			data=data, headers=requestHeader, query=requestQuery,
+			data=Request.Body, headers=Request.Headers, query=Request.Query,
 		})
 
 		if response.ok then
@@ -61,15 +61,15 @@ function Firestore:refreshIdToken(refreshToken:string)
 end
 
 function Firestore:getCollection(collectionPath:string)
-	local collection = Firestore.new(self.dataBaseLink, self.dataBaseIdToken, self.fireBaseWebApiKey, self.firestoreAuthRefreshToken)
-	collection.collectionPathUrl = collection.dataBaseLink..collectionPath
+	local Collection = Firestore.new(self.dataBaseLink, self.dataBaseIdToken, self.fireBaseWebApiKey, self.firestoreAuthRefreshToken)
+	Collection.collectionPathUrl = Collection.dataBaseLink..collectionPath
 
-	function collection:request(method:string, url:string, queryParams, requestBody)
+	function Collection:request(method:string, url:string, queryParams, requestBody)
 		local Request = requestObject.new(url, method, self.dataBaseIdToken)
 
 		return Promise.new(function(resolve, reject)
 			local response = https.request(method, url, {
-					headers=Request.Headers, data=requestBody or {}, query=queryParams or {}
+					headers=Request.Headers, data=requestBody or false, query=queryParams or false
 			})
 			if response.ok then
 				resolve(response:json(response['Body']))
@@ -79,15 +79,15 @@ function Firestore:getCollection(collectionPath:string)
 		end)
 	end
 
-	function collection:getAllDocuments()
+	function Collection:getAllDocuments()
 		return self:request('GET', self.collectionPathUrl)
 	end
 
-	function collection:getDocument(documentPath:string, mask:string)
+	function Collection:getDocument(documentPath:string, mask)
 		return self:request('GET', self.collectionPathUrl..documentPath, mask or {})
 	end
 
-	function collection:createDocument(document, documentName:string, mask:string)
+	function Collection:createDocument(document, documentName:string, mask)
 		assert(document ~=nil, 'The document must not be empty.')
 
 		local query = {
@@ -97,11 +97,11 @@ function Firestore:getCollection(collectionPath:string)
 		return self:request('POST', self.collectionPathUrl, query, document)
 	end
 
-	function collection:deleteDocument(documentPath:string)
+	function Collection:deleteDocument(documentPath:string)
 		return self:request('DELETE', self.collectionPathUrl..documentPath)
 	end
 
-	function collection:patchDocument(documentPath:string, updatedDoc:table, updateMask:string, docExist:boolean, mask:string)
+	function Collection:patchDocument(documentPath:string, updatedDoc, updateMask:string, docExist:boolean, mask)
 		assert(updatedDoc ~=nil, 'The document must not be empty.')
 		assert(updateMask ~= nil, 'Update mask must not be empty')
 		assert(docExist ~= nil, 'docExist must not be empty')
@@ -112,6 +112,6 @@ function Firestore:getCollection(collectionPath:string)
 		}
 		return self:request('PATCH', self.collectionPathUrl..documentPath, query, updatedDoc)
 	end
-	return collection
+	return Collection
 end
 return Firestore

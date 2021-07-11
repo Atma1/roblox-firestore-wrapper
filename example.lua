@@ -1,6 +1,6 @@
 local serverScriptService = game:GetService('ServerScriptService')
 local dataStoreService = game:GetService('DataStoreService')
-local fireStore = require(serverScriptService.fireStore.FireStoreWrapper)
+local Firestore = require(serverScriptService.fireStore.FireStoreWrapper)
 local apiKeysAndLinks = dataStoreService:GetDataStore('apiKeysAndLinks')
 local DB_Link, DB_Auth, DB_WebApiKey, DB_RefreshToken  =
 apiKeysAndLinks:getAsync('dataBaseLink'), apiKeysAndLinks:getAsync('dataBaseAuthorizationToken'), apiKeysAndLinks:getAsync('webApiKey'), apiKeysAndLinks:getAsync('refreshToken')
@@ -25,31 +25,31 @@ apiKeysAndLinks:getAsync('dataBaseLink'), apiKeysAndLinks:getAsync('dataBaseAuth
 	@params {String} refreshToken
 
 ]]--
-fireStore:setDataBaseSecrets(DB_Link, DB_Auth, DB_WebApiKey, DB_RefreshToken)
+local firestore = Firestore.new(DB_Link, DB_Auth, DB_WebApiKey, DB_RefreshToken)
 
 --Every promise will be in its own thread there by if you want it to be in the same thread use the await statement
---Every request is a yielding function if in the same thread
+--Every request is a yielding function if in the same thread e.g using the await statement
 
 --[[
 
 	POST operation
-	Exchange refresh token for a new idToken since every id token expires every 1 hour
+	Exchange refresh token for a new idToken since every id token expires every 1 hour if you are using anonymousSignIn in method
 	@params {String} dataBaseAuthToken
 	@returns {String} id_token
 
 ]]
 
-fireStore:exchangeRefreshTokenForAnIdToken(DB_RefreshToken)
+firestore:refreshIdToken(DB_RefreshToken)
 	:andThen(function(responseBody)
 		local newIdToken = responseBody['id_token']
-		fireStore:updatedataBaseIdToken(newIdToken, 'apiKeysAndLinks', 'dataBaseAuthorizationToken')
+		firestore:updatedataBaseIdToken(newIdToken)
 	end)
 	:catch(function(err)
 		warn(err)
 	end)
 
 --GetCollection will return collection object NOT the entiriety of a collection and its documents
-local peterChildColletion = fireStore:getColletion('peter/family/child/')
+local peterChildColletion = firestore:getColletion('peter/family/child/')
 
 
 --[[
@@ -86,10 +86,10 @@ local stewieDocument = {
 	POST Operation.
 	@params {Dictionary} document. the document to be created
 	@params {String} mask. OPTIONAL and if not included all the doc's field will be returned
-	@returns {Dictionary} the created document with all of its specified fields
+	@returns {Dictionary} the created document with all of its specified field(s)
 
 ]]-- the first param is the document the second is the document name and is optional
-local success, response = peterChildColletion:createDocument(stewieDocument, 'Stewie'):await()
+local success, response = peterChildColletion:createDocument(stewieDocument, 'Stewie')
 
 if success then
 	print(response)
@@ -121,7 +121,7 @@ local updatedChrisDocument = {
 	@params {Dictionary} updatedDoc. the updated document
 	@params {String} fieldPath. the path to field of the document or just the name of the field
 	@params {Boolean} docExist. Wether the doc is in the collection or not
-	@params {String} Mask. the field of the doc to be returned. If not included Firestore will return all the doc's fields
+	@params {String} Mask. OPTIONAL the field of the doc to be returned. If not included Firestore will return all the doc's fields
 	@returns {Dictionary} The updated Document
 
 ]]--

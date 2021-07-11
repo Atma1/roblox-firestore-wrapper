@@ -1,7 +1,7 @@
 local serverScriptService = game:GetService('ServerScriptService')
 local Promise = require(serverScriptService.Server.firestore.lib.Promise)
 local https = require(serverScriptService.Server.firestore.lib.http)
-local requestObject = require(serverScriptService.Server.firestore.RequestObject)
+local requestObject = require(serverScriptService.Server.firestore.lib.RequestObject)
 local Firestore = {}
 Firestore.__index = Firestore
 
@@ -23,7 +23,7 @@ end
 
 function Firestore:anonymousSignIn()
 
-	local Request = requestObject.new(self.anonymousSignInLink, 'POST', self.dataBaseIdToken)
+	local Request = requestObject.new(self.anonymousSignInLink, 'POST')
 
 	return Promise.new(function(resolve, reject)
 		local response = https.request(Request.Method, Request.Url, {
@@ -65,11 +65,14 @@ function Firestore:getCollection(collectionPath:string)
 	Collection.collectionPathUrl = Collection.dataBaseLink..collectionPath
 
 	function Collection:request(method:string, url:string, queryParams, requestBody)
-		local Request = requestObject.new(url, method, self.dataBaseIdToken)
+		local Request = requestObject.new(url, method)
+		Request:setAuthorization('Bearer '..self.dataBaseIdToken)
+		Request:setBody(requestBody or false)
+		Request:setQuery(queryParams or false)
 
 		return Promise.new(function(resolve, reject)
 			local response = https.request(method, url, {
-					headers=Request.Headers, data=requestBody or false, query=queryParams or false
+					headers=Request.Headers, data=Request.Body, query=Request.Query
 			})
 			if response.ok then
 				resolve(response:json(response['Body']))
@@ -91,7 +94,7 @@ function Firestore:getCollection(collectionPath:string)
 		assert(document ~=nil, 'The document must not be empty.')
 
 		local query = {
-			documentName = documentName or {},
+			documentId = documentName or {},
 			mask = mask or {}
 		}
 		return self:request('POST', self.collectionPathUrl, query, document)

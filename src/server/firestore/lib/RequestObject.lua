@@ -1,30 +1,30 @@
-local Request = {}
-Request.__index = Request
+local RequestObject = {}
+RequestObject.__index = RequestObject
 
-function Request.new(url:string, method:string)
+function RequestObject.new(url:string, method:string)
     local self = {}
     self.Url = url
     self.Method = method
     self.Headers = {
         ['Content-Type'] = 'application/json',
     }
-    return setmetatable(self, Request)
+    return setmetatable(self, RequestObject)
 end
 
-function Request:setHeaders(header)
+function RequestObject:setHeaders(header)
     self.Header = header
 end
 
-function Request:setBody(body)
+function RequestObject:setBody(body)
     self.Body = body
 end
 
-function Request:setQuery(query)
+function RequestObject:setQuery(query)
     self.Query = query
 end
 
-function Request:setAuthorization(authorization:string)
+function RequestObject:setAuthorization(authorization:string)
     self.Headers['Authorization'] = authorization
 end
 
-return Request
+return RequestObject

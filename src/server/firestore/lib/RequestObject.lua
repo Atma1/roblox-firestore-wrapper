@@ -1,13 +1,12 @@
 local Request = {}
 Request.__index = Request
 
-function Request.new(url:string, method:string, bearerToken:string)
+function Request.new(url:string, method:string)
     local self = {}
     self.Url = url
     self.Method = method
     self.Headers = {
         ['Content-Type'] = 'application/json',
-        ['Authorization'] = 'Bearer '..bearerToken
     }
     return setmetatable(self, Request)
 end
@@ -22,6 +21,10 @@ end
 
 function Request:setQuery(query)
     self.Query = query
+end
+
+function Request:setAuthorization(authorization:string)
+    self.Headers['Authorization'] = authorization
 end
 
 return Request
